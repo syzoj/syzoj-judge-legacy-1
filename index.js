@@ -115,10 +115,17 @@ async function runTestcase(task, execFile, testcase) {
   if (!task.file_io_input_name) task.file_io_input_name = 'data.in'
   if (!task.file_io_output_name) task.file_io_output_name = 'data.out'
 
+  let inputData = (await fs.readFileAsync(testcase.input)).toString();
+
+  // Remove all '\r'
+  console.log(inputData);
+  inputData = inputData.split('\r').join('');
+  console.log(inputData);
+
   let inputFile = {
     name: task.file_io_input_name,
     mode: parseInt('444', 8),
-    data: await fs.readFileAsync(testcase.input)
+    data: Buffer.from(inputData)
   };
 
   let runOptions = {
