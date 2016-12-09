@@ -22,9 +22,9 @@ async function compile(code, language) {
 
 async function getJudgeTask() {
   return new Promise(async (resolve, reject) => {
-    try {
-      let task;
-      do {
+    let task;
+    do {
+      try {
         task = await request({
           uri: url.resolve(config.syzoj_url, '/api/waiting_judge'),
           qs: {
@@ -32,14 +32,12 @@ async function getJudgeTask() {
           },
           json: true
         });
+      } catch (e) {}
 
-        await Promise.delay(config.delay);
-      } while (task.have_task === 0);
+      await Promise.delay(config.delay);
+    } while (task.have_task === 0);
 
-      resolve(task);
-    } catch (e) {
-      reject(e);
-    }
+    resolve(task);
   });
 }
 
@@ -247,7 +245,7 @@ async function judge(task, callback) {
     result.status = 'No Testdata';
     return await callback(result);
   }
-  
+
   result.case_num = dataRule.length;
 
   let status = null, i = 0, score = 0;
