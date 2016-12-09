@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "description": "Sandboxed judger for SYZOJ",
   "main": "index.js",
+  "scripts": {
+    "start": "node --harmony-async-await index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "repository": {
     "url": "https://github.com/syzoj/syzoj-judge",
     "type": "git"
