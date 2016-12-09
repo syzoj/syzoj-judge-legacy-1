@@ -1,0 +1,19 @@
+{
+  "name": "syzoj-judge",
+  "version": "0.0.0",
+  "description": "Sandboxed judger for SYZOJ",
+  "main": "index.js",
+  "repository": {
+    "url": "https://github.com/syzoj/syzoj-judge",
+    "type": "git"
+  },
+  "author": "Menci",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "adm-zip": "^0.4.7",
+    "randomstring": "^1.1.5",
+    "request": "^2.79.0",
+    "request-promise": "^4.1.1",
+    "docker-sandbox": "^0.0.0"
+  }
+}

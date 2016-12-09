@@ -1,0 +1,7 @@
+{
+  "tmp_dir": "/tmp",
+  "syzoj_url": "http://127.0.0.1:5283",
+  "judge_token": "233",
+  "testdata_dir": "testdata",
+  "delay": 1000
+}
