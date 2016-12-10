@@ -18,6 +18,6 @@
     "randomstring": "^1.1.5",
     "request": "^2.79.0",
     "request-promise": "^4.1.1",
-    "docker-sandbox": "^0.0.1"
+    "docker-sandbox": "^0.0.2"
   }
 }
