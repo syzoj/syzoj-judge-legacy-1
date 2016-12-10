@@ -105,7 +105,7 @@ async function getTestData(testdata) {
   }
 }
 
-async function runTestcase(task, language, execFile, testcase) {
+async function runTestcase(task, language, execFile, extraFiles, testcase) {
   async function getFileSize(file) {
     let stat = await fs.statAsync(file);
     return stat.size;
@@ -119,11 +119,18 @@ async function runTestcase(task, language, execFile, testcase) {
   // Remove all '\r'
   inputData = inputData.split('\r').join('');
 
-  let inputFile = {
+  let inputFiles = [];
+  inputFiles.push({
     name: task.file_io_input_name,
     mode: parseInt('444', 8),
     data: Buffer.from(inputData)
-  };
+  });
+
+  if (extraFiles) {
+    for (let file of extraFiles) {
+      inputFiles.push(file);
+    }
+  }
 
   let runOptions = {
     program: execFile,
@@ -133,10 +140,10 @@ async function runTestcase(task, language, execFile, testcase) {
     time_limit: Math.ceil(task.time_limit / 1000),
     time_limit_reserve: 1,
     memory_limit: task.memory_limit * 1024,
-    memory_limit_reserve: 32 * 1024,
+    memory_limit_reserve: language.minMemory + 32 * 1024,
     output_limit: Math.max((await getFileSize(testcase.output)) * 2, language.minOutputLimit),
     process_limit: language.minProcessLimit,
-    input_files: [inputFile],
+    input_files: inputFiles,
     output_files: [task.file_io_output_name]
   };
 
@@ -183,8 +190,8 @@ function shorterRead(buffer, maxLen) {
   else return s;
 }
 
-async function judgeTestcase(task, language, execFile, testcase) {
-  let runResult = await runTestcase(task, language, execFile, testcase);
+async function judgeTestcase(task, language, execFile, extraFiles, testcase) {
+  let runResult = await runTestcase(task, language, execFile, extraFiles, testcase);
 
   let inputData = await fs.readFileAsync(testcase.input);
   let outputData = await fs.readFileAsync(testcase.output);
@@ -258,7 +265,7 @@ async function judge(task, callback) {
     result.status = 'Running on #' + (i + 1);
     await callback(result);
 
-    let caseResult = await judgeTestcase(task, language, compileResult.execFile, testcase);
+    let caseResult = await judgeTestcase(task, language, compileResult.execFile, compileResult.extraFiles, testcase);
 
     if (caseResult.status === 'Accepted') {
       score += 100 / dataRule.length;

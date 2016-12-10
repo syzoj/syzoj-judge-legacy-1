@@ -15,6 +15,7 @@ async function isFile(file) {
 module.exports = {
   minOutputLimit: 10240,
   minProcessLimit: 2,
+  minMemory: 256 * 1024,
   getFilename(file) {
     return file + '.cs';
   },
