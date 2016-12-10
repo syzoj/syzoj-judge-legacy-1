@@ -13,6 +13,8 @@ async function isFile(file) {
 }
 
 module.exports = {
+  minOutputLimit: 1024,
+  minProcessLimit: 1,
   getFilename(file) {
     return file + '.c';
   },

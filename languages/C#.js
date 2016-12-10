@@ -13,10 +13,10 @@ async function isFile(file) {
 }
 
 module.exports = {
-  minOutputLimit: 1024,
-  minProcessLimit: 1,
+  minOutputLimit: 10240,
+  minProcessLimit: 2,
   getFilename(file) {
-    return file + '.cpp';
+    return file + '.cs';
   },
   async compile(file) {
     let parsed = path.parse(file)
@@ -29,7 +29,10 @@ module.exports = {
     let output;
 
     try {
-      output = await child_process.execAsync(`g++ ${file} -o ${execFile} -O2 -lm -static -DONLINE_JUDGE -fdiagnostics-color=always 2>&1 || true`, {
+      output = await child_process.execAsync(`mcs ${file} -define:ONLINE_JUDGE 2>&1 || true`, {
+        timeout: 5000
+      });
+      output += await child_process.execAsync(`mkbundle ${execFile}.exe -o ${execFile} 2>&1 || true`, {
         timeout: 5000
       });
     } catch (e) {

@@ -13,10 +13,9 @@ function getLanguageModel(language) {
 }
 
 async function compile(code, language) {
-  let model = getLanguageModel(language);
-  let srcFile = path.join(config.tmp_dir, model.getFilename('tmp_' + randomstring.generate()));
+  let srcFile = path.join(config.tmp_dir, language.getFilename('tmp_' + randomstring.generate()));
   await fs.writeFileAsync(srcFile, code);
-  let result = await model.compile(srcFile);
+  let result = await language.compile(srcFile);
   return result;
 }
 
@@ -106,7 +105,7 @@ async function getTestData(testdata) {
   }
 }
 
-async function runTestcase(task, execFile, testcase) {
+async function runTestcase(task, language, execFile, testcase) {
   async function getFileSize(file) {
     let stat = await fs.statAsync(file);
     return stat.size;
@@ -118,9 +117,7 @@ async function runTestcase(task, execFile, testcase) {
   let inputData = (await fs.readFileAsync(testcase.input)).toString();
 
   // Remove all '\r'
-  console.log(inputData);
   inputData = inputData.split('\r').join('');
-  console.log(inputData);
 
   let inputFile = {
     name: task.file_io_input_name,
@@ -137,8 +134,8 @@ async function runTestcase(task, execFile, testcase) {
     time_limit_reserve: 1,
     memory_limit: task.memory_limit * 1024,
     memory_limit_reserve: 32 * 1024,
-    output_limit: Math.max((await getFileSize(testcase.output)) * 2, 1024),
-    process_limit: 1,
+    output_limit: Math.max((await getFileSize(testcase.output)) * 2, language.minOutputLimit),
+    process_limit: language.minProcessLimit,
     input_files: [inputFile],
     output_files: [task.file_io_output_name]
   };
@@ -186,8 +183,8 @@ function shorterRead(buffer, maxLen) {
   else return s;
 }
 
-async function judgeTestcase(task, execFile, testcase) {
-  let runResult = await runTestcase(task, execFile, testcase);
+async function judgeTestcase(task, language, execFile, testcase) {
+  let runResult = await runTestcase(task, language, execFile, testcase);
 
   let inputData = await fs.readFileAsync(testcase.input);
   let outputData = await fs.readFileAsync(testcase.output);
@@ -239,7 +236,8 @@ async function judge(task, callback) {
   await callback(result);
 
   // Compile the source code
-  let compileResult = await compile(task.code, task.language);
+  let language = getLanguageModel(task.language);
+  let compileResult = await compile(task.code, language);
   result.compiler_output = compileResult.output;
 
   if (!compileResult.success) {
@@ -260,7 +258,7 @@ async function judge(task, callback) {
     result.status = 'Running on #' + (i + 1);
     await callback(result);
 
-    let caseResult = await judgeTestcase(task, compileResult.execFile, testcase);
+    let caseResult = await judgeTestcase(task, language, compileResult.execFile, testcase);
 
     if (caseResult.status === 'Accepted') {
       score += 100 / dataRule.length;
