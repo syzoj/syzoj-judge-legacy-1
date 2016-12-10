@@ -16,7 +16,7 @@ async function isFile(file) {
 
 module.exports = {
   minOutputLimit: 10240,
-  minProcessLimit: 20,
+  minProcessLimit: 2,
   minMemory: 0,
   getFilename(file) {
     return file + '.py';

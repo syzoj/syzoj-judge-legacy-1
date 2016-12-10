@@ -16,8 +16,8 @@ async function isFile(file) {
 
 module.exports = {
   minOutputLimit: 10240,
-  minProcessLimit: 2,
-  minMemory: 0
+  minProcessLimit: 15,
+  minMemory: 768 * 1024,
   getFilename(file) {
     return file + '.js';
   },
