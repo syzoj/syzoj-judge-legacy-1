@@ -24,7 +24,14 @@ module.exports = {
       await fs.unlinkAsync(execFile);
     }
 
-    let output = await child_process.execAsync(`fpc ${file} -O2 2>&1 || true`);
+    let output;
+    try {
+      output = await child_process.execAsync(`fpc ${file} -O2 2>&1 || true`, {
+        timeout: 5000
+      });
+    } catch (e) {
+      output = 'Time limit exceeded while compiling';
+    }
 
     return {
       success: await isFile(execFile),
