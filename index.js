@@ -34,7 +34,7 @@ async function getJudgeTask() {
       } catch (e) {}
 
       await Promise.delay(config.delay);
-    } while (task.have_task === 0);
+    } while (!task || task.have_task === 0);
 
     resolve(task);
   });
