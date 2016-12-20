@@ -273,7 +273,7 @@ async function judge(task, callback) {
 
     result.max_memory = Math.max(result.max_memory, caseResult.memory_used);
     result.total_time += caseResult.time_used;
-    result.score = Math.ceil(score);
+    result.score = Math.min(100, Math.ceil(score));
     result[i++] = caseResult;
 
     if (!status && caseResult.status !== 'Accepted') {
