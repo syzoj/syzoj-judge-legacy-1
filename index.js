@@ -281,7 +281,7 @@ async function judge(task, callback) {
     }
   }
 
-  result.score = Math.ceil(score);
+  result.score = Math.min(100, Math.ceil(score));
   if (status) result.status = status;
   else result.status = 'Accepted';
 
