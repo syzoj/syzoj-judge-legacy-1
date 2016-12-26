@@ -42,7 +42,44 @@ async function getJudgeTask() {
 
 async function parseTestdata(testdata) {
   let dir = path.join(config.testdata_dir, testdata);
-  let dataRuleText = await fs.readFileAsync(path.join(dir, 'data_rule.txt'));
+  try {
+    let dataRuleText = await fs.readFileAsync(path.join(dir, 'data_rule.txt'));
+  } catch (e) {
+    // No data_rule.txt
+    let files = await fs.readdirAsync(dir);
+    let testcases = [];
+    for (let file of files) {
+      let parsedName = path.parse(file);
+      if (parsedName.ext === '.in') {
+        if (files.includes(`${parsedName.name}.out`)) {
+          testcases.push({
+            input: path.join(dir, file),
+            output: path.join(dir, `${parsedName.name}.out`)
+          });
+        }
+
+        if (files.includes(`${parsedName.name}.ans`)) {
+          testcases.push({
+            input: path.join(dir, file),
+            output: path.join(dir, `${parsedName.name}.ans`)
+          });
+        }
+      }
+    }
+
+    testcases.sort((a, b) => {
+      function getLastInteger(s) {
+        let re = /(\d+)\D*$/;
+        let x = re.exec(s);
+        if (x) return parseInt(x[1]);
+        else return -1;
+      }
+
+      return getLastInteger(a.input) - getLastInteger(b.input);
+    });
+
+    return testcases;
+  }
 
   function parseDataRule(dataRuleText) {
     let lines = dataRuleText.split('\r').join('').split('\n');
