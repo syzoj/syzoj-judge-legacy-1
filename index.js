@@ -6,6 +6,7 @@ let AdmZip = require('adm-zip');
 let request = require('request-promise');
 let randomstring = require("randomstring");
 let DockerSandbox = require('docker-sandbox');
+let SandCastle = require('sandcastle').SandCastle;
 let config = require('./config');
 
 function getLanguageModel(language) {
@@ -193,6 +194,82 @@ async function runTestcase(task, language, execFile, extraFiles, testcase) {
   return runResult;
 }
 
+async function runSpecialJudge(dir, input, user_out, answer) {
+  try {
+    let code;
+    try {
+      code = (await fs.readFileAsync(path.join(dir, 'spj.js'))).toString();
+    } catch (e) {
+      return null;
+    }
+
+    let sandbox = new SandCastle({
+      timeout: config.spj_time_limit,
+      memoryLimitMB: config.spj_memory_limit,
+      useStrictMode: true
+    });
+    let script = sandbox.createScript(code);
+
+    let result = await new Promise((resolve, reject) => {
+      script.on('exit', (err, output) => {
+        if (err) {
+          reject({
+            type: 'Special Judge exited with error',
+            err: err.stack ? err.stack : err.toString()
+          });
+        } else resolve(output);
+      });
+
+      script.on('timeout', (err, output) => {
+        reject({
+          type: 'Special Judge time limit exceeded',
+          err: err.stack ? err.stack : err.toString()
+        });
+      });
+
+      script.run({
+        input: input,
+        user_out: user_out,
+        answer: answer
+      });
+    });
+
+    if (typeof result !== 'object') {
+      throw {
+        type: 'Special Judge returned result is not a object'
+      };
+    }
+
+    if (typeof result.score !== 'number' || !(result.score >= 0 && result.score <= 100)) {
+      throw {
+        type: 'Special Judge returned result contains a illegal score'
+      };
+    }
+
+    if (!result.message) result.message = '';
+    if (typeof result.message !== 'string') result.message = JSON.stringify(result.message);
+
+    result.success = true;
+    return result;
+  } catch (e) {
+    if (e.type) {
+      let errMessage = 'Special Judge Error: ' + e.type;
+      if (e.err) errMessage += '\n\n' + e.err;
+      return {
+        success: false,
+        score: 0,
+        message: errMessage
+      };
+    } else {
+      return {
+        success: false,
+        score: 0,
+        message: 'Special Judge Unknown Error: ' + e
+      };
+    }
+  }
+}
+
 function diff(buffer1, buffer2) {
   function splitLines(s) {
     return s.split('\r').join('').split('\n');
@@ -239,7 +316,8 @@ async function judgeTestcase(task, language, execFile, extraFiles, testcase) {
     memory_used: runResult.result.memory_usage,
     input: shorterRead(inputData, 120),
     user_out: '',
-    answer: shorterRead(outputData, 120)
+    answer: shorterRead(outputData, 120),
+    score: 0
   };
 
   if (runResult.output_files[0]) {
@@ -256,10 +334,22 @@ async function judgeTestcase(task, language, execFile, extraFiles, testcase) {
     result.status = 'File Error';
   } else {
     // AC or WA
-    if (diff(outputData, runResult.output_files[0].data)) {
-      result.status = 'Accepted';
+    let spjResult = await runSpecialJudge(path.join(config.testdata_dir, task.testdata), inputData, runResult.output_files[0].data, outputData);
+    if (spjResult === null) {
+      // No Special Judge
+      if (diff(outputData, runResult.output_files[0].data)) {
+        result.status = 'Accepted';
+        result.score = 100;
+      } else {
+        result.status = 'Wrong Answer';
+      }
     } else {
-      result.status = 'Wrong Answer';
+      result.score = spjResult.score;
+      if (!spjResult.success) result.status = 'Judgement Failed';
+      else if (spjResult.score === 100) result.status = 'Accepted';
+      else if (spjResult.score === 0) result.status = 'Wrong Answer';
+      else result.status = 'Partially Correct';
+      result.spj_message = shorterRead(spjResult.message, config.spj_message_limit);
     }
   }
 
@@ -304,9 +394,7 @@ async function judge(task, callback) {
 
     let caseResult = await judgeTestcase(task, language, compileResult.execFile, compileResult.extraFiles, testcase);
 
-    if (caseResult.status === 'Accepted') {
-      score += 100 / dataRule.length;
-    }
+    score += caseResult.score / dataRule.length;
 
     result.max_memory = Math.max(result.max_memory, caseResult.memory_used);
     result.total_time += caseResult.time_used;

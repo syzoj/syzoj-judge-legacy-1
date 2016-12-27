@@ -3,5 +3,8 @@
   "syzoj_url": "http://127.0.0.1:5283",
   "judge_token": "233",
   "testdata_dir": "testdata",
-  "delay": 1000
+  "delay": 1000,
+  "spj_time_limit": 5000,
+  "spj_memory_limit": 256,
+  "spj_message_limit": 10240
 }
