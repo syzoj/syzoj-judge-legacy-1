@@ -43,8 +43,9 @@ async function getJudgeTask() {
 
 async function parseTestdata(testdata) {
   let dir = path.join(config.testdata_dir, testdata);
+  let dataRuleText;
   try {
-    let dataRuleText = await fs.readFileAsync(path.join(dir, 'data_rule.txt'));
+    dataRuleText = await fs.readFileAsync(path.join(dir, 'data_rule.txt'));
   } catch (e) {
     // No data_rule.txt
     let files = await fs.readdirAsync(dir);
