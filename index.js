@@ -229,9 +229,9 @@ async function runSpecialJudge(dir, input, user_out, answer) {
       });
 
       script.run({
-        input: input,
-        user_out: user_out,
-        answer: answer
+        input: input.toString(),
+        user_out: user_out.toString(),
+        answer: answer.toString()
       });
     });
 
