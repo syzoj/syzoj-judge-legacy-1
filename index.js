@@ -213,6 +213,7 @@ async function runSpecialJudge(dir, input, user_out, answer) {
 
     let result = await new Promise((resolve, reject) => {
       script.on('exit', (err, output) => {
+        sandbox.kill();
         if (err) {
           reject({
             type: 'Special Judge exited with error',
@@ -222,6 +223,7 @@ async function runSpecialJudge(dir, input, user_out, answer) {
       });
 
       script.on('timeout', (err, output) => {
+        sandbox.kill();
         reject({
           type: 'Special Judge time limit exceeded',
           err: err.stack ? err.stack : err.toString()
