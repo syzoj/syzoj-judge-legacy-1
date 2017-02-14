@@ -29,7 +29,7 @@ module.exports = {
       await fs.unlinkAsync(execFile);
     }
 
-    let output;
+    let output, success = false;
 
     try {
       output = await child_process.execAsync(`(python2 -O -m py_compile ${file} 2>&1 && echo -n Y) || echo -n N`, {
