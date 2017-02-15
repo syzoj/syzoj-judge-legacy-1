@@ -370,6 +370,7 @@ async function judge(task, callback) {
   };
 
   result.status = 'Compiling';
+  result.pending = true;
   await callback(result);
 
   // Compile the source code
@@ -379,12 +380,14 @@ async function judge(task, callback) {
 
   if (!compileResult.success) {
     result.status = 'Compile Error';
+    result.pending = false;
     return await callback(result);
   }
 
   let dataRule = await getTestData(task.testdata);
   if (!dataRule) {
     result.status = 'No Testdata';
+    result.pending = false;
     return await callback(result);
   }
 
@@ -393,6 +396,7 @@ async function judge(task, callback) {
   let status = null, i = 0, score = 0;
   for (let testcase of dataRule) {
     result.status = 'Running on #' + (i + 1);
+    result.pending = true;
     await callback(result);
 
     let caseResult = await judgeTestcase(task, language, compileResult.execFile, compileResult.extraFiles, testcase);
@@ -412,6 +416,7 @@ async function judge(task, callback) {
   result.score = Math.min(100, Math.ceil(score));
   if (status) result.status = status;
   else result.status = 'Accepted';
+  result.pending = false;
 
   await callback(result);
 }
@@ -444,7 +449,8 @@ async function mainLoop() {
         score: 0,
         total_time: 0,
         max_memory: 0,
-        case_num: 0
+        case_num: 0,
+        pending: false
       });
       console.log(e);
     }
