@@ -180,6 +180,7 @@ async function runTestcase(task, language, execFile, extraFiles, testcase) {
     time_limit_reserve: 1,
     memory_limit: task.memory_limit * 1024,
     memory_limit_reserve: language.minMemory + 32 * 1024,
+    large_stack: language.largeStack,
     output_limit: Math.max((await getFileSize(testcase.output)) * 2, language.minOutputLimit),
     process_limit: language.minProcessLimit,
     input_files: inputFiles,

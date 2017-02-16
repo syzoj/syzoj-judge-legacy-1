@@ -16,6 +16,7 @@ module.exports = {
   minOutputLimit: 1024,
   minProcessLimit: 2,
   minMemory: 0,
+  largeStack: false,
   getFilename(file) {
     return file + '.java';
   },

@@ -18,6 +18,7 @@ module.exports = {
   minOutputLimit: 10240,
   minProcessLimit: 2,
   minMemory: 768 * 1024,
+  largeStack: false,
   getFilename(file) {
     return file + '.rb';
   },

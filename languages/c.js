@@ -16,6 +16,7 @@ module.exports = {
   minOutputLimit: 1024,
   minProcessLimit: 1,
   minMemory: 0,
+  largeStack: true,
   getFilename(file) {
     return file + '.c';
   },
