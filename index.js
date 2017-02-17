@@ -435,7 +435,7 @@ async function judge(task, callback) {
       if (dataRule.length === 1) {
         result.status = 'Running on #' + (caseNum + 1);
       } else {
-        result.status = 'Running on #' + (s + 1) + '・' + (caseNum + 1);
+        result.status = 'Running on #' + (s + 1) + '.' + (caseNum + 1);
       }
       subtaskResult.pending = true;
       await callback(result);
@@ -472,10 +472,10 @@ async function judge(task, callback) {
     }
     subtaskResult.score = subtaskScore;
     if (subtaskFinalStatus) subtaskResult.status = subtaskFinalStatus;
-    else subtaskResult.status = 'Passed';
+    else subtaskResult.status = 'Accepted';
     subtaskResult.pending = false;
 
-    if (!overallFinalStatus && subtaskResult.status !== 'Passed') {
+    if (!overallFinalStatus && subtaskResult.status !== 'Accepted') {
       overallFinalStatus = subtaskResult.status;
     }
   }
