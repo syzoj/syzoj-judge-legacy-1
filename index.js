@@ -44,24 +44,27 @@ async function getJudgeTask() {
 async function parseTestdata(testdata) {
   let dir = path.join(config.testdata_dir, testdata);
   let dataRuleText;
+  let res = [];
+  let list = await fs.readdirAsync(dir);
   try {
     dataRuleText = await fs.readFileAsync(path.join(dir, 'data_rule.txt'));
   } catch (e) {
     // No data_rule.txt
-    let files = await fs.readdirAsync(dir);
-    let testcases = [];
-    for (let file of files) {
+
+    res[0] = {};
+    res[0].cases = [];
+    for (let file of list) {
       let parsedName = path.parse(file);
       if (parsedName.ext === '.in') {
-        if (files.includes(`${parsedName.name}.out`)) {
-          testcases.push({
+        if (list.includes(`${parsedName.name}.out`)) {
+          res[0].cases.push({
             input: path.join(dir, file),
             output: path.join(dir, `${parsedName.name}.out`)
           });
         }
 
-        if (files.includes(`${parsedName.name}.ans`)) {
-          testcases.push({
+        if (list.includes(`${parsedName.name}.ans`)) {
+          res[0].cases.push({
             input: path.join(dir, file),
             output: path.join(dir, `${parsedName.name}.ans`)
           });
@@ -69,7 +72,9 @@ async function parseTestdata(testdata) {
       }
     }
 
-    testcases.sort((a, b) => {
+    res[0].type = 'sum';
+    res[0].score = 100;
+    res[0].cases.sort((a, b) => {
       function getLastInteger(s) {
         let re = /(\d+)\D*$/;
         let x = re.exec(s);
@@ -80,26 +85,43 @@ async function parseTestdata(testdata) {
       return getLastInteger(a.input) - getLastInteger(b.input);
     });
 
-    return testcases;
+    return res;
   }
 
   function parseDataRule(dataRuleText) {
-    let lines = dataRuleText.split('\r').join('').split('\n');
+    let lines = dataRuleText.split('\r').join('').split('\n').filter(x => x.length !== 0);
 
     if (lines.length < 3) throw 'Invalid data_rule.txt';
 
-    let numbers = lines[0].split(' ').filter(x => x);
-    let input = lines[1];
-    let output = lines[2];
+    let input = lines[lines.length - 2];
+    let output = lines[lines.length - 1];
 
-    let res = [];
-    for (let i of numbers) {
-      res[i] = {};
-      res[i].input = path.join(dir, input.replace('#', i));
-      res[i].output = path.join(dir, output.replace('#', i));
+    for (let s = 0; s < lines.length - 2; ++s) {
+      res[s] = {};
+      res[s].cases = [];
+      let numbers = lines[s].split(' ').filter(x => x);
+      if (numbers[0].includes(':')) {
+        let tokens = numbers[0].split(':');
+        res[s].type = tokens[0] || 'sum';
+        res[s].score = parseInt(tokens[1]);
+        numbers.shift();
+      } else {
+        res[s].type = 'sum';
+        res[s].score = 100;
+      }
+      for (let i of numbers) {
+        let testcase = {
+          input: path.join(dir, input.replace('#', i)),
+          output: path.join(dir, output.replace('#', i))
+        };
+
+        //if (!list.includes(testcase.input)) throw `Can't find file ${testcase.input}`;
+        //if (!list.includes(testcase.output)) throw `Can't find file ${testcase.output}`;
+        res[s].cases.push(testcase);
+      }
     }
 
-    return res.filter(x => x);
+    return res.filter(x => x.cases && x.cases.length !== 0);
   }
 
   let dataRule = parseDataRule(dataRuleText.toString());
@@ -392,30 +414,71 @@ async function judge(task, callback) {
     return await callback(result);
   }
 
-  result.case_num = dataRule.length;
-
-  let status = null, i = 0, score = 0;
-  for (let testcase of dataRule) {
-    result.status = 'Running on #' + (i + 1);
-    result.pending = true;
-    await callback(result);
-
-    let caseResult = await judgeTestcase(task, language, compileResult.execFile, compileResult.extraFiles, testcase);
-
-    score += caseResult.score / dataRule.length;
-
-    result.max_memory = Math.max(result.max_memory, caseResult.memory_used);
-    result.total_time += caseResult.time_used;
-    result.score = Math.min(100, Math.ceil(score));
-    result[i++] = caseResult;
-
-    if (!status && caseResult.status !== 'Accepted') {
-      status = caseResult.status;
-    }
+  result.subtasks = [];
+  for (let s = 0; s < dataRule.length; ++s) {
+    result.subtasks[s] = {
+      case_num: dataRule[s].cases.length,
+      status: 'Waiting',
+      pending: true
+    };
   }
 
-  result.score = Math.min(100, Math.ceil(score));
-  if (status) result.status = status;
+  let overallFinalStatus = null, overallScore = 0;
+  result.score = 0;
+  for (let s = 0; s < dataRule.length; ++s) {
+    let subtask = dataRule[s];
+    let subtaskResult = result.subtasks[s];
+    let subtaskFinalStatus = null, subtaskScore = null;
+    let caseNum = 0;
+    for (let testcase of subtask.cases) {
+      subtaskResult.status = 'Running on #' + (caseNum + 1);
+      if (dataRule.length === 1) {
+        result.status = 'Running on #' + (caseNum + 1);
+      } else {
+        result.status = 'Running on #' + (s + 1) + '・' + (caseNum + 1);
+      }
+      subtaskResult.pending = true;
+      await callback(result);
+
+      let caseResult = await judgeTestcase(task, language, compileResult.execFile, compileResult.extraFiles, testcase);
+
+      switch (subtask.type) {
+        case 'min':
+          caseResult.score = caseResult.score * (subtask.score / 100);
+          subtaskScore = Math.min((subtaskScore == null) ? subtask.score : subtaskScore, caseResult.score);
+          break;
+        case 'mul':
+          subtaskScore = ((subtaskScore == null) ? subtask.score : subtaskScore) * (caseResult.score / 100);
+          caseResult.score = caseResult.score * (subtask.score / 100);
+          break;
+        case 'sum': default:
+          caseResult.score = caseResult.score / subtask.cases.length * (subtask.score / 100);
+          subtaskScore = (subtaskScore || 0) + caseResult.score;
+          break;
+      }
+
+      result.max_memory = Math.max(result.max_memory, caseResult.memory_used);
+      result.total_time += caseResult.time_used;
+      subtaskResult[caseNum++] = caseResult;
+
+      if (!subtaskFinalStatus && caseResult.status !== 'Accepted') {
+        subtaskFinalStatus = caseResult.status;
+      }
+    }
+    subtaskResult.score = subtaskScore;
+    if (subtaskFinalStatus) subtaskResult.status = subtaskFinalStatus;
+    else subtaskResult.status = 'Passed';
+    subtaskResult.pending = false;
+
+    if (!overallFinalStatus && subtaskResult.status !== 'Passed') {
+      overallFinalStatus = subtaskResult.status;
+    }
+
+    overallScore += subtaskResult.score;
+    result.score = Math.min(100, Math.ceil(overallScore));
+  }
+
+  if (overallFinalStatus) result.status = overallFinalStatus;
   else result.status = 'Accepted';
   result.pending = false;
 
