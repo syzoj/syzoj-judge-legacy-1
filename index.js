@@ -440,8 +440,6 @@ async function judge(task, callback) {
       subtaskResult.pending = true;
       await callback(result);
 
-      overallScore -= subtaskScore;
-      result.score = Math.min(100, Math.ceil(overallScore));
       let caseResult = await judgeTestcase(task, language, compileResult.execFile, compileResult.extraFiles, testcase);
 
       switch (subtask.type) {
@@ -457,11 +455,11 @@ async function judge(task, callback) {
           subtask.type = 'sum';
           caseResult.score = caseResult.score / subtask.cases.length * (subtask.score / 100);
           subtaskScore = (subtaskScore || 0) + caseResult.score;
+          overallScore += caseResult.score;
+          result.score = Math.min(100, Math.ceil(overallScore));
           break;
       }
 
-      overallScore += subtaskScore;
-      result.score = Math.min(100, Math.ceil(overallScore));
       result.max_memory = Math.max(result.max_memory, caseResult.memory_used);
       result.total_time += caseResult.time_used;
       subtaskResult[caseNum++] = caseResult;
@@ -478,6 +476,9 @@ async function judge(task, callback) {
     if (!overallFinalStatus && subtaskResult.status !== 'Passed') {
       overallFinalStatus = subtaskResult.status;
     }
+
+    if (subtask.type !== 'sum') overallScore += subtaskResult.score;
+    result.score = Math.min(100, Math.ceil(overallScore));
   }
 
   if (overallFinalStatus) result.status = overallFinalStatus;
