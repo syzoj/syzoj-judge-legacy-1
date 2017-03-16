@@ -218,7 +218,7 @@ async function runTestcase(task, language, execFile, extraFiles, testcase) {
   return runResult;
 }
 
-async function runSpecialJudge(dir, input, user_out, answer) {
+async function runSpecialJudge(task, dir, input, user_out, answer) {
   try {
     let code;
     try {
@@ -256,7 +256,8 @@ async function runSpecialJudge(dir, input, user_out, answer) {
       script.run({
         input: input.toString(),
         user_out: user_out.toString(),
-        answer: answer.toString()
+        answer: answer.toString(),
+        task: task
       });
     });
 
@@ -360,7 +361,7 @@ async function judgeTestcase(task, language, execFile, extraFiles, testcase) {
     result.status = 'File Error';
   } else {
     // AC or WA
-    let spjResult = await runSpecialJudge(path.join(config.testdata_dir, task.testdata), inputData, runResult.output_files[0].data, outputData);
+    let spjResult = await runSpecialJudge(task, path.join(config.testdata_dir, task.testdata), inputData, runResult.output_files[0].data, outputData);
     if (spjResult === null) {
       // No Special Judge
       if (diff(outputData, runResult.output_files[0].data)) {
