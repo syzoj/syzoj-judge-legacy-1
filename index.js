@@ -1,3 +1,5 @@
+#!/usr/bin/node --harmony-async-await
+
 let Promise = require('bluebird');
 let fs = Promise.promisifyAll(require('fs'));
 let path = require('path');
@@ -6,15 +8,17 @@ let AdmZip = require('adm-zip');
 let request = require('request-promise');
 let randomstring = require("randomstring");
 let DockerSandbox = require('docker-sandbox');
+let child_process = require('child_process');
 let SandCastle = require('sandcastle').SandCastle;
 let config = require('./config');
+let randomPrefix = randomstring.generate();
 
 function getLanguageModel(language) {
   return require('./languages/' + language);
 }
 
 async function compile(code, language) {
-  let srcFile = path.join(config.tmp_dir, language.getFilename('tmp_' + randomstring.generate()));
+  let srcFile = path.join(config.tmp_dir, language.getFilename(`tmp_${randomPrefix}_${randomstring.generate()}`));
   await fs.writeFileAsync(srcFile, code);
   let result = await language.compile(srcFile);
   return result;
@@ -502,26 +506,27 @@ async function uploadJudgeResult(task, result) {
   });
 }
 
-async function mainLoop() {
-  while (1) {
-    let task = await getJudgeTask();
-    console.log(task);
-    try {
-      await judge(task, async result => {
-        let uploadResult = await uploadJudgeResult(task, result);
-      });
-    } catch (e) {
-      await uploadJudgeResult(task, {
-        status: "System Error",
-        score: 0,
-        total_time: 0,
-        max_memory: 0,
-        case_num: 0,
-        pending: false
-      });
-      console.log(e);
-    }
+async function main() {
+  let task = await getJudgeTask();
+  console.log(task);
+  try {
+    await judge(task, async result => {
+      let uploadResult = await uploadJudgeResult(task, result);
+    });
+  } catch (e) {
+    await uploadJudgeResult(task, {
+      status: "System Error",
+      score: 0,
+      total_time: 0,
+      max_memory: 0,
+      case_num: 0,
+      pending: false
+    });
+    console.log(e);
   }
+
+  child_process.execSync('rm -rf ' + path.join(config.tmp_dir, `tmp_${randomPrefix}_*`));
+  process.exit();
 }
 
-mainLoop();
+main();
