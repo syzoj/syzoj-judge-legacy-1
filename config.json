@@ -4,7 +4,7 @@
   "judge_token": "233",
   "testdata_dir": "testdata",
   "delay": 1000,
-  "output_limit": 100000,
+  "output_limit": 104857600,
   "spj_time_limit": 50000,
   "spj_memory_limit": 256,
   "spj_message_limit": 10240
