@@ -7,11 +7,19 @@ let url = require('url');
 let AdmZip = require('adm-zip');
 let request = require('request-promise');
 let randomstring = require("randomstring");
-let DockerSandbox = require('docker-sandbox');
 let child_process = require('child_process');
-let SandCastle = require('sandcastle').SandCastle;
+let shellEscape = require('shell-escape');
 let config = require('./config');
 let randomPrefix = randomstring.generate();
+
+let runSpecialJudge = require('./spj');
+let [sb, runTestcase] = require('./runner');
+
+global.config = config;
+
+function execute () {
+  return child_process.execSync(shellEscape(Array.from(arguments)));
+}
 
 function getLanguageModel(language) {
   return require('./languages/' + language);
@@ -119,8 +127,6 @@ async function parseTestdata(testdata) {
           output: path.join(dir, output.replace('#', i))
         };
 
-        //if (!list.includes(testcase.input)) throw `Can't find file ${testcase.input}`;
-        //if (!list.includes(testcase.output)) throw `Can't find file ${testcase.output}`;
         res[s].cases.push(testcase);
       }
     }
@@ -170,166 +176,31 @@ async function getTestData(testdata) {
   }
 }
 
-async function runTestcase(task, language, execFile, extraFiles, testcase) {
-  async function getFileSize(file) {
-    let stat = await fs.statAsync(file);
-    return stat.size;
-  }
-
-  if (!task.file_io_input_name) task.file_io_input_name = 'data.in'
-  if (!task.file_io_output_name) task.file_io_output_name = 'data.out'
-
-  let inputData = (await fs.readFileAsync(testcase.input)).toString();
-
-  // Remove all '\r'
-  inputData = inputData.split('\r').join('');
-
-  let inputFiles = [];
-  inputFiles.push({
-    name: task.file_io_input_name,
-    mode: parseInt('444', 8),
-    data: Buffer.from(inputData)
-  });
-
-  if (extraFiles) {
-    for (let file of extraFiles) {
-      inputFiles.push(file);
-    }
-  }
-
-  let runOptions = {
-    program: execFile,
-    file_stdin: '',
-    file_stdout: '',
-    file_stderr: '',
-    time_limit: Math.ceil(task.time_limit / 1000),
-    time_limit_reserve: 1,
-    memory_limit: task.memory_limit * 1024,
-    memory_limit_reserve: language.minMemory + 32 * 1024,
-    large_stack: language.largeStack,
-    output_limit: Math.max((await getFileSize(testcase.output)) * 2, language.minOutputLimit),
-    process_limit: language.minProcessLimit,
-    input_files: inputFiles,
-    output_files: [task.file_io_output_name]
-  };
-
-  if (!task.file_io) {
-    runOptions.file_stdin = task.file_io_input_name;
-    runOptions.file_stdout = task.file_io_output_name;
-  }
-
-  let runResult = await DockerSandbox(runOptions);
-  return runResult;
-}
-
-async function runSpecialJudge(task, dir, input, user_out, answer) {
+function diff(filename1, filename2) {
   try {
-    let code;
-    try {
-      code = (await fs.readFileAsync(path.join(dir, 'spj.js'))).toString();
-    } catch (e) {
-      return null;
-    }
-
-    let sandbox = new SandCastle({
-      timeout: config.spj_time_limit,
-      memoryLimitMB: config.spj_memory_limit,
-      useStrictMode: true
-    });
-    let script = sandbox.createScript(code);
-
-    let result = await new Promise((resolve, reject) => {
-      script.on('exit', (err, output) => {
-        sandbox.kill();
-        if (err) {
-          reject({
-            type: 'Special Judge exited with error',
-            err: err.stack ? err.stack : err.toString()
-          });
-        } else resolve(output);
-      });
-
-      script.on('timeout', (err, output) => {
-        sandbox.kill();
-        reject({
-          type: 'Special Judge time limit exceeded',
-          err: err.stack ? err.stack : err.toString()
-        });
-      });
-
-      script.run({
-        input: input.toString(),
-        user_out: user_out.toString(),
-        answer: answer.toString(),
-        task: task
-      });
-    });
-
-    if (typeof result !== 'object') {
-      throw {
-        type: 'Special Judge returned result is not a object'
-      };
-    }
-
-    if (typeof result.score !== 'number' || !(result.score >= 0 && result.score <= 100)) {
-      throw {
-        type: 'Special Judge returned result contains a illegal score'
-      };
-    }
-
-    if (!result.message) result.message = '';
-    if (typeof result.message !== 'string') result.message = JSON.stringify(result.message);
-
-    result.success = true;
-    return result;
-  } catch (e) {
-    if (e.type) {
-      let errMessage = 'Special Judge Error: ' + e.type;
-      if (e.err) errMessage += '\n\n' + e.err;
-      return {
-        success: false,
-        score: 0,
-        message: errMessage
-      };
-    } else {
-      return {
-        success: false,
-        score: 0,
-        message: 'Special Judge Unknown Error: ' + e
-      };
-    }
-  }
-}
-
-function diff(buffer1, buffer2) {
-  function splitLines(s) {
-    return s.split('\r').join('').split('\n');
-  }
-
-  function normalizeLines(a) {
-    while (a.length) {
-      if (a[a.length - 1].trim() === '') a.pop();
-      else break;
-    }
-    for (let i = 0; i < a.length; i++) {
-      a[i] = a[i].trimRight();
-    }
-    return a;
-  }
-
-  let a1 = normalizeLines(splitLines(buffer1.toString())),
-      a2 = normalizeLines(splitLines(buffer2.toString()));
-
-  if (a1.length != a2.length) return false;
-  else {
-    for (let i = 0; i < a1.length; i++) {
-      if (a1[i] !== a2[i]) return false;
-    }
+    execute('diff', '-Bb', filename1, filename2);
     return true;
+  } catch (e) {
+    return false;
   }
 }
 
-function shorterRead(buffer, maxLen) {
+function shorterRead(fileName, maxLen) {
+  let fd = fs.openSync(fileName, 'r');
+  let len = fs.fstatSync(fd).size;
+  if (len > maxLen) {
+    let buf = Buffer.allocUnsafe(maxLen);
+    fs.readSync(fd, buf, 0, 120, 0);
+    let res = buf.toString() + '...';
+    fs.closeSync(fd);
+    return res;
+  } else {
+    fs.closeSync(fd);
+    return fs.readFileSync(fileName).toString();
+  }
+}
+
+function shorterReadString(buffer, maxLen) {
   let s = buffer.toString();
   if (s.length > maxLen) return s.substr(0, maxLen) + '...';
   else return s;
@@ -338,21 +209,19 @@ function shorterRead(buffer, maxLen) {
 async function judgeTestcase(task, language, execFile, extraFiles, testcase) {
   let runResult = await runTestcase(task, language, execFile, extraFiles, testcase);
 
-  let inputData = await fs.readFileAsync(testcase.input);
-  let outputData = await fs.readFileAsync(testcase.output);
-
   let result = {
     status: '',
     time_used: parseInt(runResult.result.time_usage / 1000),
     memory_used: runResult.result.memory_usage,
-    input: shorterRead(inputData, 120),
+    input: shorterRead(testcase.input, 120),
     user_out: '',
-    answer: shorterRead(outputData, 120),
+    answer: shorterRead(testcase.output, 120),
     score: 0
   };
 
-  if (runResult.output_files[0]) {
-    result.user_out = shorterRead(runResult.output_files[0].data, 120);
+  let outputFile = runResult.getOutputFile();
+  if (outputFile) {
+    result.user_out = shorterRead(outputFile, 120);
   }
 
   if (result.time_used > task.time_limit) {
@@ -361,14 +230,14 @@ async function judgeTestcase(task, language, execFile, extraFiles, testcase) {
     result.status = 'Memory Limit Exceeded';
   } else if (runResult.result.status !== 'Exited Normally') {
     result.status = runResult.result.status;
-  } else if (!runResult.output_files[0]) {
+  } else if (!outputFile) {
     result.status = 'File Error';
   } else {
     // AC or WA
-    let spjResult = await runSpecialJudge(task, path.join(config.testdata_dir, task.testdata), inputData, runResult.output_files[0].data, outputData);
+    let spjResult = await runSpecialJudge(task, path.join(config.testdata_dir, task.testdata), testcase.input, outputFile, testcase.output);
     if (spjResult === null) {
       // No Special Judge
-      if (diff(outputData, runResult.output_files[0].data)) {
+      if (diff(testcase.output, outputFile)) {
         result.status = 'Accepted';
         result.score = 100;
       } else {
@@ -380,7 +249,7 @@ async function judgeTestcase(task, language, execFile, extraFiles, testcase) {
       else if (spjResult.score === 100) result.status = 'Accepted';
       else if (spjResult.score === 0) result.status = 'Wrong Answer';
       else result.status = 'Partially Correct';
-      result.spj_message = shorterRead(spjResult.message, config.spj_message_limit);
+      result.spj_message = shorterReadString(spjResult.message, config.spj_message_limit);
     }
   }
 
@@ -526,7 +395,8 @@ async function main() {
   }
 
   child_process.execSync('rm -rf ' + path.join(config.tmp_dir, `tmp_${randomPrefix}_*`));
-  process.exit();
+  sb.destroy();
+  process.exit()
 }
 
 main();

@@ -54,9 +54,8 @@ module.exports = {
       execFile: execFile,
       output: output,
       extraFiles: !success ? null : [{
-        name: path.basename(execFile + '.pyo'),
-        mode: parseInt('444', 8),
-        data: await fs.readFileAsync(execFile + '.pyo')
+        targetFilename: path.basename(execFile + '.pyo'),
+        filename: execFile + '.pyo'
       }]
     };
   }

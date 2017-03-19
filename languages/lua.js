@@ -54,9 +54,8 @@ module.exports = {
       execFile: execFile,
       output: output,
       extraFiles: !success ? null : [{
-        name: path.basename(execFile + '.exe'),
-        mode: parseInt('444', 8),
-        data: await fs.readFileAsync(file)
+        targetFilename: path.basename(execFile + '.exe'),
+        filename: file
       }]
     };
   }

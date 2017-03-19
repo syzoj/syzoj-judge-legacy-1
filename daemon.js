@@ -17,10 +17,15 @@
  *  License along with SYZOJ. If not, see <http://www.gnu.org/licenses/>.
  */
 
+if (process.getuid() !== 0) {
+  console.log('Need root privileges.');
+  process.exit();
+}
+
 let child_process = require('child_process');
 
 function start () {
-  let obj = child_process.exec('./index.js', start);
+  let obj = child_process.exec('./judger.js', start);
   obj.stdout.pipe(process.stdout);
 }
 
