@@ -56,7 +56,44 @@ function runTestcase(task, language, execFile, extraFiles, testcase) {
   };
 }
 
+function runForSpecialJudge (execFile, extraFiles, language) {
+  sb.reset();
+
+  // console.log(arguments);
+  let program = sb.put(execFile);
+
+  if (extraFiles) {
+    for (let file of extraFiles) {
+      if (typeof file === 'string') sb.put(file);
+      else {
+        if (file.data) {
+          sb.put(Buffer.from(file.data), file.mask, file.targetFilename);
+        } else {
+          sb.put(file.filename, file.mask, file.targetFilename);
+        }
+      }
+    }
+  }
+
+  let runOptions = {
+    program: program,
+    file_stdout: 'stdout',
+    file_stderr: 'stderr',
+    time_limit: Math.ceil(config.spj_time_limit / 1000),
+    time_limit_reserve: 1,
+    memory_limit: config.spj_time_limit * 1024,
+    memory_limit_reserve: language.minMemory + 32 * 1024,
+    large_stack: language.largeStack,
+    output_limit: Math.max(config.spj_message_limit * 2, language.minOutputLimit),
+    process_limit: language.minProcessLimit,
+    network: false
+  };
+
+  return sb.run(runOptions);
+}
+
 module.exports = [
   sb,
-  runTestcase
+  runTestcase,
+  runForSpecialJudge
 ];

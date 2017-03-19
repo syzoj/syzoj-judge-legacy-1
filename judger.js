@@ -10,26 +10,16 @@ let randomstring = require("randomstring");
 let child_process = require('child_process');
 let shellEscape = require('shell-escape');
 let config = require('./config');
-let randomPrefix = randomstring.generate();
 
-let runSpecialJudge = require('./spj');
-let [sb, runTestcase] = require('./runner');
+let [compileSpecialJudge, runSpecialJudge] = require('./spj');
+let [sb, runTestcase, run] = require('./runner');
+let [getLanguageModel, compile] = require('./compile');
 
 global.config = config;
+global.randomPrefix = randomstring.generate();
 
 function execute () {
   return child_process.execSync(shellEscape(Array.from(arguments)));
-}
-
-function getLanguageModel(language) {
-  return require('./languages/' + language);
-}
-
-async function compile(code, language) {
-  let srcFile = path.join(config.tmp_dir, language.getFilename(`tmp_${randomPrefix}_${randomstring.generate()}`));
-  await fs.writeFileAsync(srcFile, code);
-  let result = await language.compile(srcFile);
-  return result;
 }
 
 async function getJudgeTask() {
@@ -284,6 +274,14 @@ async function judge(task, callback) {
   let dataRule = await getTestData(task.testdata);
   if (!dataRule) {
     result.status = 'No Testdata';
+    result.pending = false;
+    return await callback(result);
+  }
+
+  let spjCompileResult = await compileSpecialJudge(path.join(config.testdata_dir, task.testdata));
+  if (spjCompileResult && !spjCompileResult.success) {
+    result.status = 'Judgement Failed';
+    result.spj_compiler_output = spjCompileResult.output;
     result.pending = false;
     return await callback(result);
   }

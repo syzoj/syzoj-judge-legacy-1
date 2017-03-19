@@ -5,7 +5,7 @@
   "testdata_dir": "testdata",
   "delay": 1000,
   "output_limit": 104857600,
-  "spj_time_limit": 50000,
+  "spj_time_limit": 1500,
   "spj_memory_limit": 256,
   "spj_message_limit": 10240
 }
