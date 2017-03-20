@@ -25,7 +25,7 @@ if (process.getuid() !== 0) {
 let child_process = require('child_process');
 
 function start () {
-  let obj = child_process.exec('./judger.js', start);
+  let obj = child_process.exec('node --harmony-async-await judger.js', start);
   obj.stdout.pipe(process.stdout);
 }
 
