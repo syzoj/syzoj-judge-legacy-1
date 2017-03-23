@@ -5,6 +5,7 @@ let sb = new Sandbox([
   ['/usr/lib', '/usr/lib', true],
   ['/lib', '/lib', true],
   ['/lib64', '/lib64', true],
+  ['/etc/alternatives/', '/etc/alternatives/', true],
   ['/dev', '/dev', true],
 ]);
 
