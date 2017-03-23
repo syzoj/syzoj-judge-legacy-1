@@ -3,7 +3,6 @@ let sb = new Sandbox([
   ['/usr/bin', '/usr/bin', true],
   ['/usr/share', '/usr/share', true],
   ['/usr/lib', '/usr/lib', true],
-  ['/usr/lib64', '/usr/lib64', true],
   ['/lib', '/lib', true],
   ['/lib64', '/lib64', true],
   ['/dev', '/dev', true],
