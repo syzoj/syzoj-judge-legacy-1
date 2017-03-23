@@ -1,5 +1,3 @@
-#!/usr/bin/node --harmony-async-await
-
 let Promise = require('bluebird');
 let fs = Promise.promisifyAll(require('fs'));
 let path = require('path');
