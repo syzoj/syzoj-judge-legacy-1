@@ -7,6 +7,7 @@ let sb = new Sandbox([
   ['/lib64', '/lib64', true],
   ['/etc/alternatives/', '/etc/alternatives/', true],
   ['/dev', '/dev', true],
+  ['/proc', '/proc', true],
 ]);
 
 function runTestcase(task, language, execFile, extraFiles, testcase) {
