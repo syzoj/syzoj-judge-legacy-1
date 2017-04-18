@@ -67,7 +67,7 @@ function runForSpecialJudge (execFile, extraFiles, language) {
     for (let file of extraFiles) {
       if (typeof file === 'string') sb.put(file);
       else {
-        if (file.data) {
+        if (typeof file.data !== 'undefined') {
           sb.put(Buffer.from(file.data), file.mask, file.targetFilename);
         } else {
           sb.put(file.filename, file.mask, file.targetFilename);
