@@ -30,7 +30,8 @@ async function getJudgeTask() {
           qs: {
             'session_id': config.judge_token
           },
-          json: true
+          json: true,
+          jar: true
         });
       } catch (e) {}
 
@@ -130,6 +131,7 @@ async function downloadTestData(testdata) {
   let zip = await request({
     uri: url.resolve(config.syzoj_url, '/static/uploads/' + testdata),
     encoding: null,
+    jar: true,
     transform: data => {
       return new AdmZip(data);
     }
@@ -367,7 +369,8 @@ async function uploadJudgeResult(task, result) {
     qs: {
       session_id: config.judge_token
     },
-    json: true
+    json: true,
+    jar: true
   });
 }
 
