@@ -1,20 +1,39 @@
-let path = require('path');
-let fs = require('fs');
-let randomstring = require("randomstring");
+let child_process = require('child_process');
 
 function getLanguageModel(language) {
   try {
-    return require('./languages/' + language);
+    let lang = require('./languages/' + language);
+    lang.name = language;
+    return lang;
   } catch (e) {
     return null;
   }
 }
 
 async function compile(code, language) {
-  let srcFile = path.join(config.tmp_dir, language.getFilename(`tmp_${randomPrefix}_${randomstring.generate()}`));
-  await fs.writeFileAsync(srcFile, code);
-  let result = await language.compile(srcFile);
-  return result;
+  return new Promise((resolve, reject) => {
+    let cp = child_process.fork('./compile_process.js');
+    cp.send({
+      code: code,
+      lang: language.name,
+      randomPrefix: randomPrefix
+    });
+
+    let returned = false;
+    cp.on('message', res => {
+      resolve(res);
+      returned = true;
+    });
+
+    cp.on('error', err => {
+      reject(err);
+      returned = true;
+    });
+
+    cp.on('close', (code, signal) => {
+      if (!returned) reject({ code: code, signal: signal });
+    });
+  });
 }
 
 module.exports = [
