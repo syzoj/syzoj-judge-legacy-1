@@ -31,7 +31,7 @@ module.exports = {
     let output;
 
     try {
-      output = await child_process.execAsync(`g++ ${file} -o ${execFile} -O2 -lm -static -DONLINE_JUDGE -fdiagnostics-color=always 2>&1 || true`, {
+      output = await child_process.execAsync(`g++ ${file} -o ${execFile} -O2 -lm -DONLINE_JUDGE -fdiagnostics-color=always 2>&1 || true`, {
         timeout: 5000
       });
     } catch (e) {
