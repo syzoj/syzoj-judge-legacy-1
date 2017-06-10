@@ -1,5 +1,5 @@
 let Sandbox = require('chroot-sandbox');
-let sb = new Sandbox([
+let sb = new Sandbox(parseInt(process.argv[2]) || 2333, [
   ['/usr/bin', '/usr/bin', true],
   ['/usr/share', '/usr/share', true],
   ['/usr/lib', '/usr/lib', true],
