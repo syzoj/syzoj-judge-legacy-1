@@ -23,6 +23,7 @@ async function compile(code, language, randomPrefix) {
 process.setgid('nogroup');
 process.setgroups(['nogroup']);
 process.setuid('nobody');
+process.env['TMPDIR'] = config.tmp_dir;
 process.chdir(config.tmp_dir);
 
 process.on('message', async msg => {
