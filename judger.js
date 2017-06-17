@@ -180,7 +180,7 @@ function shorterRead(fileName, maxLen) {
   let len = fs.fstatSync(fd).size;
   if (len > maxLen) {
     let buf = Buffer.allocUnsafe(maxLen);
-    fs.readSync(fd, buf, 0, 120, 0);
+    fs.readSync(fd, buf, 0, maxLen, 0);
     let res = buf.toString() + '...';
     fs.closeSync(fd);
     return res;
