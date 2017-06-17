@@ -1,3 +1,4 @@
+let randomstring = require("randomstring");
 let Sandbox = require('chroot-sandbox');
 let sb = new Sandbox(parseInt(process.argv[2]) || 2333, [
   ['/usr/bin', '/usr/bin', true],
@@ -27,11 +28,12 @@ function runTestcase(task, language, execFile, extraFiles, testcase) {
 
   let program = sb.put(execFile);
 
+  let stderr = randomstring.generate(10);
   let runOptions = {
     program: program,
     file_stdin: '',
     file_stdout: '',
-    file_stderr: '',
+    file_stderr: stderr,
     time_limit: Math.ceil(task.time_limit / 1000),
     time_limit_reserve: 1,
     memory_limit: task.memory_limit * 1024,
@@ -53,6 +55,9 @@ function runTestcase(task, language, execFile, extraFiles, testcase) {
     result: result,
     getOutputFile: () => {
       return sb.get(task.file_io_output_name);
+    },
+    getStderrFile: () => {
+      return sb.get(stderr);
     }
   };
 }

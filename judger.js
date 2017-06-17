@@ -214,6 +214,11 @@ async function judgeTestcase(task, language, execFile, extraFiles, testcase) {
     result.user_out = shorterRead(outputFile, 120);
   }
 
+  let stderrFile = runResult.getStderrFile();
+  if (stderrFile) {
+    result.user_err = shorterRead(stderrFile, 1024);
+  }
+
   if (result.time_used > task.time_limit) {
     result.status = 'Time Limit Exceeded';
   } else if (result.memory_used > task.memory_limit * 1024) {
