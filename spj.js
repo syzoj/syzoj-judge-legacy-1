@@ -1,7 +1,6 @@
 let Promise = require('bluebird');
 let fs = Promise.promisifyAll(require('fs'));
 let path = require('path');
-let SandCastle = require('sandcastle').SandCastle;
 let tmp = require('tmp');
 let shellEscape = require('shell-escape');
 let child_process = require('child_process');
@@ -14,85 +13,6 @@ function isFile(file) {
     return stat.isFile();
   } catch (e) {
     return false;
-  }
-}
-
-async function runLegacySpecialJudge (task, dir, input, user_out, answer) {
-  try {
-    let code;
-    try {
-      code = (await fs.readFileAsync(path.join(dir, 'spj.js'))).toString();
-    } catch (e) {
-      return null;
-    }
-
-    let sandbox = new SandCastle({
-      timeout: config.spj_time_limit,
-      memoryLimitMB: config.spj_memory_limit,
-      useStrictMode: true
-    });
-    let script = sandbox.createScript(code);
-
-    let result = await new Promise(async (resolve, reject) => {
-      script.on('exit', (err, output) => {
-        sandbox.kill();
-        if (err) {
-          reject({
-            type: 'Special Judge exited with error',
-            err: err.stack ? err.stack : err.toString()
-          });
-        } else resolve(output);
-      });
-
-      script.on('timeout', (err, output) => {
-        sandbox.kill();
-        reject({
-          type: 'Special Judge time limit exceeded',
-          err: err.stack ? err.stack : err.toString()
-        });
-      });
-
-      script.run({
-        input: (await fs.readFileAsync(input)).toString(),
-        user_out: (await fs.readFileAsync(user_out)).toString(),
-        answer: (await fs.readFileAsync(answer)).toString(),
-        task: task
-      });
-    });
-
-    if (typeof result !== 'object') {
-      throw {
-        type: 'Special Judge returned result is not an object'
-      };
-    }
-
-    if (typeof result.score !== 'number' || !(result.score >= 0 && result.score <= 100)) {
-      throw {
-        type: 'Special Judge returned result contains an illegal score'
-      };
-    }
-
-    if (!result.message) result.message = '';
-    if (typeof result.message !== 'string') result.message = JSON.stringify(result.message);
-
-    result.success = true;
-    return result;
-  } catch (e) {
-    if (e.type) {
-      let errMessage = 'Special Judge Error: ' + e.type;
-      if (e.err) errMessage += '\n\n' + e.err;
-      return {
-        success: false,
-        score: 0,
-        message: errMessage
-      };
-    } else {
-      return {
-        success: false,
-        score: 0,
-        message: 'Special Judge Unknown Error: ' + e
-      };
-    }
   }
 }
 
@@ -160,10 +80,26 @@ function runNewSpecialJudge (task, dir, input, user_out, answer) {
 async function runSpecialJudge (task, dir, input, user_out, answer) {
   if (spjCompileResult) {
     return runNewSpecialJudge(task, dir, input, user_out, answer);
-  } else if (isFile(path.join(dir, 'spj.js'))) {
-    return await runLegacySpecialJudge(task, dir, input, user_out, answer);
   }
   return null;
+}
+
+let LEGACY_SPECIAL_JUDGE_WRAPPER = `
+function exit(obj) {
+  process.stdout.write(String(obj.score));
+  if (obj.message) process.stderr.write(String(obj.message));
+  process.exit();
+}
+
+let fs = require('fs');
+let input = fs.readFileSync('input').toString();
+let user_out = fs.readFileSync('user_out').toString();
+let answer = fs.readFileSync('answer').toString();
+let code = fs.readFileSync('code').toString();
+exports.main();
+`
+async function compileLegacySpecialJudge (code) {
+  return await compile(code + '\n' + LEGACY_SPECIAL_JUDGE_WRAPPER, spjLang = getLanguageModel('nodejs'));
 }
 
 async function compileSpecialJudge (dir) {
@@ -175,6 +111,10 @@ async function compileSpecialJudge (dir) {
     if (!spjLang) continue;
 
     return spjCompileResult = await compile(fs.readFileSync(path.join(dir, file)).toString(), spjLang);
+  }
+
+  if (files.includes('spj.js')) {
+    return spjCompileResult = await compileLegacySpecialJudge(fs.readFileSync(path.join(dir, 'spj.js')).toString());
   }
 
   return null;
