@@ -30,4 +30,5 @@ process.on('message', async msg => {
   let lang = getLanguageModel(msg.lang);
   let res = await compile(msg.code, lang, msg.randomPrefix);
   process.send(res);
+  process.exit();
 });
