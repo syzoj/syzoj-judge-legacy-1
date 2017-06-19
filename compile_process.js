@@ -29,6 +29,9 @@ process.chdir(config.tmp_dir);
 process.on('message', async msg => {
   let lang = getLanguageModel(msg.lang);
   let res = await compile(msg.code, lang, msg.randomPrefix);
+  if (res.output && res.output.length > 10 * 1024) {
+    res.output = res.output.substr(0, 10 * 1024) + '...';
+  }
   process.send(res);
   process.exit();
 });
