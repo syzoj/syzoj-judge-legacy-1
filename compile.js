@@ -21,13 +21,13 @@ async function compile(code, language) {
 
     let returned = false;
     cp.on('message', res => {
-      resolve(res);
       returned = true;
+      resolve(res);
     });
 
     cp.on('error', err => {
-      reject(err);
       returned = true;
+      reject(err);
     });
 
     cp.on('close', (code, signal) => {
